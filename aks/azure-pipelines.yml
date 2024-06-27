@@ -18,6 +18,8 @@ stages:
   - job: InitAgent
     displayName: 'Init Agent'
     steps:
+    - template: ../download-terragrunt.yaml
+
     - script: |
         sudo apt-get install unzip
         curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
@@ -29,6 +31,8 @@ stages:
   - job: TerraformPlan
     displayName: 'Terraform plan'
     steps:
+    - template: ../download-terragrunt.yaml
+
     - checkout: none
     - task: TerraformInstaller@1
       displayName: install terraform
@@ -40,6 +44,17 @@ stages:
         KeyVaultName: 'demopipelinekeyvault'
         SecretsFilter: '*'
         RunAsPreJob: false
+
+    - script: |
+        terragrunt plan-all --terragrunt-working-dir env/dev  
+      displayName: 'TEST plan with terragrunt'
+      env:
+          ARM_CLIENT_ID: $(AKS-SP-APP-ID)
+          ARM_CLIENT_SECRET: $(AKS-SP-PASSWORD)
+          ARM_TENANT_ID: $(TENANT)
+          ARM_SUBSCRIPTION_ID: $(SUBSCRIPTION)
+          ARM_SAS_TOKEN: $(BACKEND-SAS-TOKEN)
+#          PLANTYPE: ${{ parameters.planType }}
 
     - script: |
         cd aks
@@ -63,6 +78,8 @@ stages:
   - job: TerraformApply
     displayName: 'Terraform ${{ parameters.planType }}'
     steps:
+    - template: ../download-terragrunt.yaml
+
     - checkout: none
     - task: TerraformInstaller@1
       displayName: install terraform
