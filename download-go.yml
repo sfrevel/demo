@@ -1,0 +1,29 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# Template for installing GO
+# ---------------------------------------------------------------------------------------------------------------------
+
+steps:
+  - task: Cache@2
+    inputs:
+      key: 'go | "$(GO_VERSION)" | "$(GO_DOWNLOAD_SHA)"'
+      restoreKeys: 'go | "$(GO_VERSION)" | "$(GO_DOWNLOAD_SHA)"'
+      path: go
+      cacheHitVar: GO_CACHE_RESTORED
+    displayName: 'Cache GO'
+
+  - script: |
+      mkdir -p go
+      cd go
+      curl -OL https://golang.org/dl/go$(GO_VERSION).linux-amd64.tar.gz
+      echo "${GO_DOWNLOAD_SHA} go$(GO_VERSION).linux-amd64.tar.gz" | sha256sum -c -
+    condition: ne(variables.GO_CACHE_RESTORED, 'true')
+    displayName: 'Download GO'
+
+  - script: |
+      cd go
+      tar -xf go$(GO_VERSION).linux-amd64.tar.gz
+      sudo rm -rf /usr/local/go && sudo mv go /usr/local/
+      export PATH=$PATH:/usr/local/go/bin
+      go version
+    displayName: 'Add go to path'
+

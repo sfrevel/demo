@@ -1,0 +1,30 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# Template for installing terraform
+# ---------------------------------------------------------------------------------------------------------------------
+
+steps:
+  - task: Cache@2
+    inputs:
+      key: 'terraform | "$(TERRAFORM_VERSION)" | "$(TERRAFORM_DOWNLOAD_SHA)"'
+      restoreKeys: 'terraform | "$(TERRAFORM_VERSION)" | "$(TERRAFORM_DOWNLOAD_SHA)"'
+      path: terraform
+      cacheHitVar: TERRAFORM_CACHE_RESTORED
+    displayName: 'Cache terraform'
+
+  - script: |
+      mkdir -p terraform
+      cd terraform
+      curl -OL https://releases.hashicorp.com/terraform/$(TERRAFORM_VERSION)/terraform_$(TERRAFORM_VERSION)_linux_amd64.zip
+      echo "${TERRAFORM_DOWNLOAD_SHA} terraform_$(TERRAFORM_VERSION)_linux_amd64.zip" | sha256sum -c -
+    condition: ne(variables.TERRAFORM_CACHE_RESTORED, 'true')
+    displayName: 'Download terrform'
+
+  - script: |
+      cd terraform
+      unzip -o terraform_$(TERRAFORM_VERSION)_linux_amd64.zip
+      sudo mv terraform /usr/local/bin/
+      chmod +x /usr/local/bin/terraform
+      terraform version
+    displayName: 'Add terraform to path'
+
+

@@ -1,0 +1,90 @@
+
+trigger: none
+#- main
+
+parameters:
+- name: planType
+  type: string
+  default: "apply"
+  values: [ "apply", "destroy" ]
+- name: environment
+  type: string
+  default: "dev"
+  values: ["dev","qa"]
+
+pool:
+  name: ADO-Agent-Pool
+
+stages:
+- stage: Init
+  displayName: 'Init Agent'
+  jobs:
+  - job: InitAgent
+    displayName: 'Init Agent'
+    steps:
+    - template: ./download-terraform.yml
+    - template: ./download-terragrunt.yml
+    - template: ./download-go.yml
+
+    - script: |
+        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      displayName: 'Install tools on Agent if needed'
+
+- stage: Plan
+  dependsOn: 
+  - Init
+  displayName: 'Terraform plan'
+  jobs:
+  - job: TerraformPlan
+    displayName: 'Terraform plan'
+    steps:
+
+    - checkout: none
+
+    - task: AzureKeyVault@1
+      inputs:
+        azureSubscription: 'Demopipelinekeyvault'
+        KeyVaultName: 'demopipelinekeyvault'
+        SecretsFilter: '*'
+        RunAsPreJob: false
+
+    - script: |
+        terragrunt plan $([[ "$PLANTYPE" == "destroy" ]] && echo "-$PLANTYPE" || echo "") --terragrunt-working-dir env/$ENVIRONMENT --out tg.plan
+      displayName: 'terragrunt plan'
+      env:
+          ARM_CLIENT_ID: $(AKS-SP-APP-ID)
+          ARM_CLIENT_SECRET: $(AKS-SP-PASSWORD)
+          ARM_TENANT_ID: $(TENANT)
+          ARM_SUBSCRIPTION_ID: $(SUBSCRIPTION)
+          ARM_SAS_TOKEN: $(BACKEND-SAS-TOKEN)
+          PLANTYPE: ${{ parameters.planType }}
+          ENVIRONMENT: ${{parameters.environment}}
+
+- stage: Deploy
+  dependsOn: 
+  - Plan
+  displayName: 'Terraform ${{ parameters.planType }}'
+  jobs:
+  - job: TerraformApply
+    displayName: 'Terraform ${{ parameters.planType }}'
+    steps:
+
+    - checkout: none
+
+    - task: AzureKeyVault@1
+      inputs:
+        azureSubscription: 'Demopipelinekeyvault'
+        KeyVaultName: 'demopipelinekeyvault'
+        SecretsFilter: '*'
+        RunAsPreJob: false
+
+    - script: |
+        terragrunt apply --terragrunt-working-dir env/$ENVIRONMENT --terragrunt-non-interactive tg.plan
+      displayName: 'terragrunt ${{ parameters.planType }}'
+      env:
+          ARM_CLIENT_ID: $(AKS-SP-APP-ID)
+          ARM_CLIENT_SECRET: $(AKS-SP-PASSWORD)
+          ARM_TENANT_ID: $(TENANT)
+          ARM_SUBSCRIPTION_ID: $(SUBSCRIPTION)
+          ARM_SAS_TOKEN: $(BACKEND-SAS-TOKEN)
+          ENVIRONMENT: ${{parameters.environment}}
