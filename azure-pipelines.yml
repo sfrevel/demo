@@ -30,9 +30,55 @@ stages:
         curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       displayName: 'Install tools on Agent if needed'
 
-- stage: Plan
+- stage: Test
   dependsOn: 
   - Init
+  displayName: 'Terraform test'
+  jobs:
+  - job: TerraformPlan
+    displayName: 'Terraform test'
+    steps:
+
+    - checkout: none
+
+    - task: AzureKeyVault@1
+      inputs:
+        azureSubscription: 'Demopipelinekeyvault'
+        KeyVaultName: 'demopipelinekeyvault'
+        SecretsFilter: '*'
+        RunAsPreJob: false
+
+    - script: |
+        terraform fmt -check -recursive
+        terragrunt hclfmt --terragrunt-check --terragrunt-working-dir env/$ENVIRONMENT
+        terragrunt run-all validate --terragrunt-working-dir env/$ENVIRONMENT
+      displayName: 'check format, hclfmt and validate'
+      env:
+          ARM_CLIENT_ID: $(AKS-SP-APP-ID)
+          ARM_CLIENT_SECRET: $(AKS-SP-PASSWORD)
+          ARM_TENANT_ID: $(TENANT)
+          ARM_SUBSCRIPTION_ID: $(SUBSCRIPTION)
+          ARM_SAS_TOKEN: $(BACKEND-SAS-TOKEN)
+          ENVIRONMENT: ${{parameters.environment}}
+
+    - script: |
+        source ~/.profile
+        cd test
+        go mod init github.com/sfrevel/demo
+        go mod tidy
+        go test -v -timeout 30m
+      displayName: 'run terratest with terrgrunt'
+      env:
+          ARM_CLIENT_ID: $(AKS-SP-APP-ID)
+          ARM_CLIENT_SECRET: $(AKS-SP-PASSWORD)
+          ARM_TENANT_ID: $(TENANT)
+          ARM_SUBSCRIPTION_ID: $(SUBSCRIPTION)
+          ARM_SAS_TOKEN: $(BACKEND-SAS-TOKEN)
+          ENVIRONMENT: ${{parameters.environment}}
+
+- stage: Plan
+  dependsOn: 
+  - Test
   displayName: 'Terraform plan'
   jobs:
   - job: TerraformPlan

@@ -23,7 +23,8 @@ steps:
       cd go
       tar -xf go$(GO_VERSION).linux-amd64.tar.gz
       sudo rm -rf /usr/local/go && sudo mv go /usr/local/
-      export PATH=$PATH:/usr/local/go/bin
+      grep -q $(echo "PATH=$PATH:/usr/local/go/bin/") ~/.profile || echo "PATH=$PATH:/usr/local/go/bin/" >> ~/.profile
+      source ~/.profile
       go version
     displayName: 'Add go to path'
 
