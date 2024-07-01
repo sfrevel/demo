@@ -9,7 +9,7 @@ import (
 
 func TestAKS(t *testing.T) {
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir:    "../env/test-config",
+		TerraformDir:    "../env/test",
 		TerraformBinary: "/usr/local/bin/terragrunt",
 	})
 

@@ -33,6 +33,7 @@ stages:
 - stage: Test
   dependsOn: 
   - Init
+  condition: succeeded()
   displayName: 'Terraform test'
   jobs:
   - job: TerraformPlan
@@ -59,7 +60,7 @@ stages:
           ARM_TENANT_ID: $(TENANT)
           ARM_SUBSCRIPTION_ID: $(SUBSCRIPTION)
           ARM_SAS_TOKEN: $(BACKEND-SAS-TOKEN)
-          ENVIRONMENT: ${{parameters.environment}}
+          ENVIRONMENT: "test"
 
     - script: |
         source ~/.profile
@@ -79,6 +80,7 @@ stages:
 - stage: Plan
   dependsOn: 
   - Test
+  condition: succeeded()
   displayName: 'Terraform plan'
   jobs:
   - job: TerraformPlan
@@ -109,6 +111,7 @@ stages:
 - stage: Deploy
   dependsOn: 
   - Plan
+  condition: succeeded()
   displayName: 'Terraform ${{ parameters.planType }}'
   jobs:
   - job: TerraformApply
@@ -134,3 +137,19 @@ stages:
           ARM_SUBSCRIPTION_ID: $(SUBSCRIPTION)
           ARM_SAS_TOKEN: $(BACKEND-SAS-TOKEN)
           ENVIRONMENT: ${{parameters.environment}}
+
+- stage: DeployApp
+  dependsOn: 
+  - Deploy
+  condition: and(succeeded(), eq('${{parameters.planType}}', 'apply'))
+  displayName: 'Deploy App'
+  jobs:
+  - job: TerraformApply
+    displayName: 'Deploy App'
+    steps:
+
+    - checkout: none
+
+    - script: |
+        echo 'Hello from Deploy App'
+      displayName: 'Disploy the App in k8s'

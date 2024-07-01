@@ -96,6 +96,8 @@ data "azurerm_storage_account_sas" "state" {
     create  = true
     update  = false
     process = false
+    tag     = false
+    filter  = false    
   }
 }
 
