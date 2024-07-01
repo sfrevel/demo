@@ -34,5 +34,5 @@ override.tf.json
 terraform.rc
 
 # Ignore GO files
-**/go.mode
+**/go.mod
 **/go.sum
